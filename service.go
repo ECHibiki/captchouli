@@ -49,7 +49,11 @@ const Gelbooru = common.Gelbooru
 
 const (
 	// minimum size of image pool for a tag
-	poolMinSize = 6
+	poolMinSize = 50
+)
+
+const (
+	itterations = 500
 )
 
 // Explicitness rating of image
@@ -133,23 +137,27 @@ func (s *Service) initTag(tag string) (err error) {
 		f     = s.filters(tag)
 		req   = f.FetchRequest
 	)
+	var pass int = 0
 	for {
 		count, err = db.ImageCount(f)
 		if err != nil {
 			return
 		}
-		if count >= poolMinSize {
+		if count >= poolMinSize || pass == itterations {
+			log.Printf("captchouli: ending tag=%s explicitness=%v\nout >pool %d",
+				tag, s.opts.Explicitness, count)
 			return
 		} else if first {
 			first = false
 			log.Printf("captchouli: initializing tag=%s explicitness=%v\n",
 				tag, s.opts.Explicitness)
 		}
-
 		err = fetch(req)
 		if err != nil {
+			log.Printf("out err %d", count)  
 			return
 		}
+		pass = pass + 1
 	}
 }
 
@@ -212,8 +220,8 @@ func (s *Service) NewCaptcha(w io.Writer, colour, background string,
 			tagF = strings.Title(tagF)
 		}
 	}
+	//w = bufio.NewWriter(w);
 	templates.WriteCaptcha(w, colour, background, tagF, id, images)
-
 	if !common.IsTest {
 		scheduleFetch <- f.FetchRequest
 	}
@@ -236,15 +244,20 @@ func CheckCaptcha(id [64]byte, solution []byte) error {
 // The router implements http.Handler.
 func (s *Service) Router() *httprouter.Router {
 	r := httprouter.New()
-	r.HandlerFunc("GET", "/", func(w http.ResponseWriter, r *http.Request) {
+	r.HandlerFunc("GET", "/captcha", func(w http.ResponseWriter, r *http.Request) {
 		handleError(w, s.ServeNewCaptcha(w, r))
 	})
-	r.HandlerFunc("POST", "/", func(w http.ResponseWriter,
+	r.HandlerFunc("POST", "/captcha", func(w http.ResponseWriter,
 		r *http.Request,
 	) {
 		handleError(w, s.ServeCheckCaptcha(w, r))
 	})
 	r.HandlerFunc("POST", "/status", func(w http.ResponseWriter,
+		r *http.Request,
+	) {
+		handleError(w, ServeStatus(w, r))
+	})
+	r.HandlerFunc("GET", "/status", func(w http.ResponseWriter,
 		r *http.Request,
 	) {
 		handleError(w, ServeStatus(w, r))

@@ -35,8 +35,10 @@ func Fetch(req common.FetchRequest) (f *os.File, image db.Image, err error) {
 	mu.Lock()
 	defer mu.Unlock()
 
+	//removed
+	//  
 	tags :=
-		"solo -photo -monochrome -multiple_girls -couple -multiple_boys -cosplay -objectification " +
+		"solo -multiple_girls -couple -multiple_boys -monochrome -photo -objectification -cosplay solo " +
 			req.Tag
 
 	images, err := fetchPage(req.Tag, tags)
@@ -74,9 +76,9 @@ func Fetch(req common.FetchRequest) (f *os.File, image db.Image, err error) {
 func fetchPage(requested, tags string) (images []image, err error) {
 	store := cache[tags]
 	if store == nil {
-		maxPages := 200
+		maxPages := 1000
 		if common.IsTest { // Reduce test duration
-			maxPages = 2
+			//maxPages = 2
 		}
 		store = &cacheEntry{
 			pages:    make(map[int][]image),
@@ -104,7 +106,7 @@ func fetchPage(requested, tags string) (images []image, err error) {
 
 	limit := uint(100)
 	if common.IsTest { // Reduce test duration
-		limit = 5
+		//limit = 5
 	}
 	posts, err := boorufetch.FromGelbooru(tags, uint(page), limit)
 	switch {
