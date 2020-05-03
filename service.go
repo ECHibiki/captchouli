@@ -230,7 +230,8 @@ func (s *Service) initTag(tag string) (err error) {
 			fetchCount++
 			fmt.Fprintf(os.Stdout, "\rfetch attempt: %d\t", fetchCount)
 		}
-		err = fetch(req)
+		err  = fetch(req)
+		fmt.Println(err)
 		if err != nil {
 			log.Printf("out err %d", count)  
 			return

@@ -3,6 +3,7 @@ package gelbooru
 import (
 	"database/sql"
 	"io"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -43,12 +44,16 @@ func Fetch(req common.FetchRequest) (f *os.File, image db.Image, err error) {
 
 	err = tryFetchPage(req.Tag, tags)
 	if err != nil {
+		log.Printf("err1")
 		return
 	}
-
 	img, err := db.PopRandomPendingImage(req.Tag)
+	fmt.Println(img)
+	fmt.Println(err)
 	if err != nil {
+		log.Printf("err2")
 		if err == sql.ErrNoRows {
+			log.Printf("-1")
 			err = nil
 		}
 		return
@@ -63,16 +68,19 @@ func Fetch(req common.FetchRequest) (f *os.File, image db.Image, err error) {
 
 	r, err := http.Get(img.URL)
 	if err != nil {
+		log.Printf("err3")
 		return
 	}
 	defer r.Body.Close()
 
 	f, err = ioutil.TempFile("", "")
 	if err != nil {
+		log.Printf("err4")
 		return
 	}
 	_, err = io.Copy(f, r.Body)
 	if err != nil {
+		log.Printf("err5")
 		// Ignore any errors here. This cleanup need not succeed.
 		f.Close()
 		os.Remove(f.Name())
@@ -82,10 +90,11 @@ func Fetch(req common.FetchRequest) (f *os.File, image db.Image, err error) {
 }
 
 // Attempt to fetch a random page from gelbooru
+// api has max of 200 as of date
 func tryFetchPage(requested, tags string) (err error) {
 	store := cache[tags]
 	if store == nil {
-		maxPages := 1000
+		maxPages := 200
 		if common.IsTest { // Reduce test duration
 			maxPages = 10
 		}
@@ -119,6 +128,7 @@ func tryFetchPage(requested, tags string) (err error) {
 
 	posts, err := boorufetch.FromGelbooru(tags, uint(page), 100)
 	if err != nil {
+		log.Printf("errA")
 		return
 	}
 	if len(posts) == 0 {
@@ -146,12 +156,14 @@ func tryFetchPage(requested, tags string) (err error) {
 		}
 		img.MD5, err = p.MD5()
 		if err != nil {
+			log.Printf("err6")
 			return
 		}
 
 		// Check, if not already in DB
 		inDB, err = db.IsInDatabase(img.MD5)
 		if err != nil {
+			log.Printf("err7")
 			return
 		}
 		if inDB {
@@ -159,6 +171,7 @@ func tryFetchPage(requested, tags string) (err error) {
 		}
 		inDB, err = db.IsPendingImage(img.MD5)
 		if err != nil {
+			log.Printf("err8")
 			return
 		}
 		if inDB {
@@ -179,21 +192,23 @@ func tryFetchPage(requested, tags string) (err error) {
 		if !valid {
 			err = db.BlacklistImage(img.MD5)
 			if err != nil {
+				log.Printf("err9")
 				return
 			}
 			continue
 		}
 
 		// Rating and tag fetches might need a network fetch, so do these later
-
 		img.Rating, err = p.Rating()
 		if err != nil {
+			log.Printf("err10")
 			return
 		}
 
 		hasChar = false
 		booruTags, err = p.Tags()
 		if err != nil {
+			log.Printf("err11")
 			return
 		}
 		for k := range dedupMap {

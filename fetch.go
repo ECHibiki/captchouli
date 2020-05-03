@@ -4,7 +4,8 @@ import (
 	"log"
 	"os"
 	"time"
-
+	"fmt"
+	"errors"
 	"github.com/bakape/captchouli/common"
 	"github.com/bakape/captchouli/db"
 	"github.com/bakape/captchouli/gelbooru"
@@ -34,6 +35,7 @@ func init() {
 				for req := range requests {
 					if i == target {
 						err := fetch(req)
+						fmt.Println(err)
 						if err != nil {
 							log.Printf("fetch error: from %s on tag `%s`\n",
 								req.Source, req.Tag)
@@ -56,6 +58,10 @@ func fetch(req common.FetchRequest) (err error) {
 	}
 	f, img, err := fn(req)
 	if f == nil || err != nil {
+		log.Printf("..")
+		err =  errors.New("no file/req")
+		fmt.Println(f)
+		fmt.Println(err)
 		return
 	}
 	defer os.Remove(f.Name())
